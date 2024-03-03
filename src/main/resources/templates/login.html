@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>ログインページ</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+	<div th:replace="navFragments :: navbar"></div>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <h2 class="text-center mt-5">ログイン</h2>
+                <div class="card my-5">
+                    <div class="card-body">
+                        <form th:action="@{/login}" method="post" th:object="${userInput}">
+                            <div class="form-group">
+                                <label for="name">ユーザー名</label>
+                                <input type="text" class="form-control" name="username" placeholder="ユーザー名を入力してください">
+                                <div th:errors="*{name}" style="color: red;"></div>
+                            </div>
+                            <div class="form-group">
+                                <label for="password">パスワード</label>
+                                <input type="password" class="form-control" name="password" placeholder="パスワードを入力してください">
+                                <div th:errors="*{password}" style="color: red;"></div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">ログイン</button>
+                        </form>
+                    </div>
+                </div>
+                <div th:text="${failureMessage}" style="color: red;"></div>
+                <div class="text-center">
+                    <a th:href="@{/register}">アカウントをお持ちでない方はこちら</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

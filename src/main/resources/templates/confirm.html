@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>登録確認画面</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+	<div th:replace="navFragments :: navbar"></div>
+    <div class="container">
+        <h2 class="mt-5">登録確認</h2>
+        <form th:action="@{/register/confirm}" method="post" class="mt-4" th:object="${userFormInput}">
+            <div class="form-group">
+                <label for="username">ユーザ名</label>
+                <input type="text" class="form-control" th:field="*{name}" readonly>
+            </div>
+            <div class="form-group">
+                <label for="comment">コメント</label>
+                <textarea class="form-control" th:field="*{comment}" rows="3" readonly></textarea>
+            </div>
+            <input type="hidden" th:field="*{password}">
+            <button type="submit" class="btn btn-primary" name="register">登録</button>
+            <button type="submit" class="btn btn-primary" name="back">戻る</button>
+        </form>
+    </div>
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

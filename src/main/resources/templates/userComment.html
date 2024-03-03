@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>ユーザーコメントページ</title>
+    <!-- Bootstrap CSSの読み込み -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+	<div th:replace="navFragments :: navbar"></div>
+    <div class="container mt-5">
+        <!-- カードを使用してコメントを表示 -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title" th:text="${username}+'さんのコメント'">コメント</h3>
+            </div>
+            <div class="card-body">
+<!--                <h4 th:text="'ユーザー名: ' + ${username} + 'さん'"></h4>-->
+                <p th:text="${comment} ? ${comment} : 'コメントがありません。'"></p>
+            </div>
+        </div>
+        
+        <!-- 戻るボタン -->
+        <div class="mt-3">
+            <a href="/login" class="btn btn-secondary">ログイン画面に戻る</a>
+        </div>
+    </div>
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

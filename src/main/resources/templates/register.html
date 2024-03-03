@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>新規登録画面</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+	<div th:replace="navFragments :: navbar"></div>
+    <div class="container">
+        <h2 class="mt-5">新規登録</h2>
+        <form th:action="@{/register}" method="post" class="mt-4" th:object="${userFormInput}">
+            <div class="form-group">
+                <label for="username">ユーザ名</label>
+                <input type="text" class="form-control" th:field="*{name}" placeholder="ユーザ名を入力してください">
+				<div th:errors="*{name}" style="color: red;"></div>
+				<div th:if="${registrationError}" class="alert alert-danger" th:text="${registrationError}"></div>
+            </div>
+            <div class="form-group">
+                <label for="password">パスワード</label>
+                <input type="password" class="form-control" th:field="*{password}" placeholder="パスワードを入力してください">
+				<div th:errors="*{password}" style="color: red;"></div>
+            </div>
+            <div class="form-group">
+                <label for="passwordConfirm">パスワード確認（2回目）</label>
+                <input type="password" class="form-control" th:field="*{passwordConfirm}" placeholder="もう一度パスワードを入力してください">
+				<div th:errors="*{passwordConfirm}" style="color: red;"></div>
+            </div>
+            <div class="form-group">
+                <label for="comment">コメント(必須ではありません)</label>
+                <textarea class="form-control" th:field="*{comment}" rows="3" placeholder="コメントを入力してください"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">登録</button>
+        </form>
+    </div>
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

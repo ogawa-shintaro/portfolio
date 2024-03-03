@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <!-- Google Fontsからかわいらしいフォントを追加 -->
+    <link href="https://fonts.googleapis.com/css2?family=Yomogi&display=swap" rel="stylesheet">
+    <title>ポートフォリオすいか</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js"></script>
+    <style type="text/css">
+        html {
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: auto;
+            overflow: auto;
+            font-family: 'Yomogi', cursive;
+        }
+
+        #gameContainer {
+            width: 100%;
+            height: 100%;
+            max-width: 100vmin;
+            max-height: 133.33vmin;
+            /* 800 / 600 = 1.33 */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="gameContainer">
+    </div>
+    <script type="text/javascript">
+        var config = {
+            type: Phaser.AUTO,
+            width: 600,
+            height: 800,
+            scale: {
+                mode: Phaser.Scale.FIT, // ゲームをコンテナに合わせる
+                autoCenter: Phaser.Scale.CENTER_BOTH // 中央揃え
+            },
+            parent: 'gameContainer',
+            physics: {
+                default: 'matter',
+                matter: {
+                    gravity: { y: 1.2 },
+                    debug: false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        var game = new Phaser.Game(config);
+        var balls;
+        var score = 0;
+        var scoreText;
+        var nextBallType;
+        var nextBall;
+        var shapes;
+        var bgm;
+
+        function preload() {
+            for (var i = 1; i <= 11; i++) {
+                this.load.image("ball" + i, "images3/ball_" + i + ".png");
+            }
+            this.load.image('retryButton', 'images3/りとらい1.png');
+            this.load.json('shapes', 'images3/hantei4.json');
+            this.load.image('background', 'images3/haikei2.jpg');
+            this.load.image('settingsButton', 'images3/setting.png');
+            this.load.image('resetButton', 'path_to_reset_button_image');
+            this.load.audio('bgm', 'images3/かえるのピアノ.mp3');
+            this.load.image('nextCharacterBg', 'images3/ねくすと1.png');
+            this.load.audio('dropSound', 'images3/落下音.mp3');
+            this.load.audio('attachSound', 'images3/くっつき音.mp3');
+            this.load.image('frame', 'images3/waku1.png');
+            this.load.image('frontFrame', 'images3/waku2.png');
+            this.load.image('backFrame', 'images3/waku3.png');
+        }
+
+        function getScaleForBallType(type) {
+            const baseScale = 0.05;
+            return baseScale + type * 0.030;
+        }
+
+        var gameOver = false;
+        var gameOverText;
+        var frameY;
+        var dropLimitY;
+        var frameXLeft;
+        var frameXRight;
+        var nextNextBall;
+        var effectsVolume;
+        var textStyle = {
+            fontSize: '40px',
+            fontFamily: 'Yomogi', // Google Fontsから追加したフォント
+            fill: '#00ff00', // 色
+            stroke: '#000000',
+            strokeThickness: 1.5
+        };
+
+        function create() {
+            // BGMが未初期化の場合のみ初期化
+            if (!bgm) {
+                bgm = this.sound.add('bgm', { volume: 0, loop: true });
+                bgm.play();
+            }
+            if (!effectsVolume) {
+                effectsVolume = 0;
+            }
+            this.add.image(0, 0, 'background').setOrigin(0, 0);
+            createEffectsVolumeBar(this);
+
+            shapes = this.cache.json.get('shapes');
+
+            scoreText = this.add.text(game.config.width - 16, game.config.height - 60, 'スコア: 0', textStyle).setOrigin(1, 1);
+            var frameWidth = game.config.width * 0.6;
+            var frameHeight = game.config.height * 0.6;
+            var frameX = (game.config.width - frameWidth) / 2;
+            frameY = (game.config.height - frameHeight) / 2;
+            frameXLeft = (game.config.width - frameWidth) / 2;
+            frameXRight = frameXLeft + frameWidth;
+            dropLimitY = frameY - frameHeight / 100;
+            var frameBuffer = frameWidth / 50;
+
+            // var frameImage = this.add.image(game.config.width / 2, game.config.height / 2, 'frame')
+            //     .setScale(0.7, 0.7)
+            //     .setOrigin(0.5, 0.55);
+            var frameImage = this.add.image(game.config.width / 2, game.config.height / 2, 'frontFrame')
+                .setScale(0.7, 0.7)
+                .setOrigin(0.5, 0.55).setDepth(10);
+            var frameImage = this.add.image(game.config.width / 2, game.config.height / 2, 'backFrame')
+                .setScale(0.7, 0.7)
+                .setOrigin(0.5, 0.55);
+
+            this.retryButton = this.add.image(300, 300, 'retryButton').setInteractive();
+            this.retryButton.setScale(0.5);
+            this.retryButton.visible = false;
+
+            // // リトライボタンの境界を描画するためのグラフィックスオブジェクト
+            // var graphics = this.add.graphics();
+            // graphics.lineStyle(2, 0xff0000); // 赤い線で描画
+
+            // // リトライボタンの境界を取得して描画
+            // var bounds = this.retryButton.getBounds();
+            // graphics.strokeRectShape(new Phaser.Geom.Rectangle(bounds.x, bounds.y, bounds.width, bounds.height));
+
+            this.retryButton.on('pointerdown', function () {
+                gameOver = false;
+                score = 0;
+                this.scene.restart();
+            }, this);
+
+            var graphics = this.add.graphics();
+            graphics.lineStyle(4, 0x696969, 0); //枠の線を描画、第三引数は不透明度
+            graphics.moveTo(frameX, frameY + frameHeight);
+            graphics.lineTo(frameX + frameWidth, frameY + frameHeight);
+            graphics.moveTo(frameX, frameY);
+            graphics.lineTo(frameX, frameY + frameHeight);
+            graphics.moveTo(frameX + frameWidth, frameY);
+            graphics.lineTo(frameX + frameWidth, frameY + frameHeight);
+            graphics.strokePath();
+            this.matter.add.rectangle(frameX + frameWidth / 2, frameY + frameHeight, frameWidth, 5, { isStatic: true });
+            this.matter.add.rectangle(frameX, frameY + frameHeight / 2, 5, frameHeight, { isStatic: true });
+            this.matter.add.rectangle(frameX + frameWidth, frameY + frameHeight / 2, 5, frameHeight, { isStatic: true });
+            balls = [];
+            this.lastDropTime = 0;
+
+            // 次のボールのタイプを決定
+            nextBallType = Math.floor(Math.random() * 3) + 1;
+            // その次のボールのタイプを決定
+            var nextNextBallType = Math.floor(Math.random() * 3) + 1;
+
+            // プレビューボールの初期化
+            // nextBall = this.add.image(50, game.config.height - 50, 'ball' + nextBallType);
+            // nextBall.setScale(getScaleForBallType(nextBallType));
+
+            // 右上の「次のキャラ」表示部分の背景
+            var nextCharBgX = game.config.width - 150; // 右端から100ピクセルの位置
+            var nextCharBgY = -10; // 上端
+            var nextCharBg = this.add.image(nextCharBgX, nextCharBgY, 'nextCharacterBg').setOrigin(0, 0);
+
+            // 画像のサイズを適切なスケールに調整
+            var scale = 180 / 1024; // 1024ピクセルの画像を100ピクセルに縮小
+            nextCharBg.setScale(scale, scale);
+            nextCharBg.setDepth(1); // 深度を設定して他の要素より前面に表示
+
+            // 新しいプレビューボールの初期化
+            nextNextBall = this.add.image(game.config.width - 60, 60, 'ball' + nextNextBallType);
+            nextNextBall.setScale(getScaleForBallType(nextNextBallType));
+            nextNextBall.setDepth(2);
+
+            this.input.on('pointerdown', function (pointer) {
+                if (gameOver) {
+                    // リトライボタンの範囲を取得
+                    var buttonBounds = this.retryButton.getBounds();
+
+                    // クリックされた位置がリトライボタンの領域内か確認
+                    if (buttonBounds.contains(pointer.x, pointer.y)) {
+                        // ゲームをリスタート
+                        gameOver = false;
+                        score = 0;
+                        this.scene.restart();
+                    }
+                    // それ以外の場所をクリックしても何もしない
+                    return;
+                }
+                if (pointer.x >= barX - 30 && pointer.x <= barX + barWidth + 30 && pointer.y >= barY - 80 && pointer.y <= barY + barHeight + 30) {
+                    // ここでは何もしない（音量調節バーの処理は別途定義）
+                    return;
+                }
+                if (pointer.x >= barX && pointer.x <= barX + barWidth && pointer.y >= barY && pointer.y <= barY + barHeight) {
+                    pointer.stopPropagation();
+                    // クリック位置に応じてハンドル位置を調整
+                    var newHandleX = Phaser.Math.Clamp(pointer.x, barX, barX + barWidth);
+                    volumeHandle.x = newHandleX;
+                    // 音量を計算（最大値を0.1に制限）
+                    var volume = (newHandleX - barX) / barWidth * 0.1;
+                    bgm.setVolume(volume);
+                }
+
+                var currentTime = this.time.now;
+                if (currentTime - this.lastDropTime < 500) {
+                    return;
+                }
+
+                var dropX = pointer.x;
+                if (dropX < frameXLeft + frameBuffer + 50) {
+                    dropX = frameXLeft + frameBuffer + 50;
+                } else if (dropX > frameXRight - frameBuffer - 50) {
+                    dropX = frameXRight - frameBuffer - 50;
+                }
+
+                var ball = createBall(this, dropX, dropLimitY, nextBallType);
+                ball.setAngle(nextBall.angle);
+                ball.justDropped = true;
+                this.time.delayedCall(1000, function () {
+                    ball.justDropped = false;
+                }, [], this);
+
+                ball.type = nextBallType;
+                ball.setScale(getScaleForBallType(nextBallType));
+                balls.push(ball);
+                this.lastDropTime = currentTime;
+
+                nextBallType = nextNextBallType;
+                nextBall.setTexture('ball' + nextBallType);
+                nextBall.setScale(getScaleForBallType(nextBallType));
+
+                nextNextBallType = Math.floor(Math.random() * 3) + 1;
+                nextNextBall.setTexture('ball' + nextNextBallType);
+                nextNextBall.setScale(getScaleForBallType(nextNextBallType));
+            }, this);
+
+            nextBallType = Math.floor(Math.random() * 3) + 1;
+            nextBall = this.add.image(50, game.config.height - 50, 'ball' + nextBallType);
+            nextBall.setScale(getScaleForBallType(nextBallType));
+
+            this.matter.world.on('collisionstart', function (event) {
+                for (var i = 0; i < event.pairs.length; i++) {
+                    var bodyA = event.pairs[i].bodyA;
+                    var bodyB = event.pairs[i].bodyB;
+                    if (balls.includes(bodyA.gameObject) && balls.includes(bodyB.gameObject)) {
+                        handleBallCollision(this, bodyA.gameObject, bodyB.gameObject);
+                    }
+                }
+            }, this);
+
+            gameOverText = this.add.text(game.config.width / 2, game.config.height / 2, '', { fontSize: '64px', fill: '#00FF00' });
+            gameOverText.setScale(0.5);
+            gameOverText.setVisible(false);
+            gameOverText.setDepth(9999);
+            gameOverText.setOrigin(0.5);
+
+            // ローカルストレージからベストスコアを取得
+            var bestScore = localStorage.getItem('bestScore');
+            if (bestScore) {
+                bestScore = parseInt(bestScore);
+            } else {
+                bestScore = 0;
+            }
+
+            // 現在のスコアとベストスコアを表示
+            // scoreText = this.add.text(16, 16, 'スコア: 0', { fontSize: '32px', fill: '#FFFFFF' });
+            bestScoreText = this.add.text(game.config.width - 16, game.config.height - 16, 'ベストスコア: ' + bestScore, textStyle).setOrigin(1, 1);
+
+
+            // ベストスコアの更新を行う関数
+            this.updateBestScore = function (newScore) {
+                bestScoreText.setText('ベストスコア: ' + newScore);
+            };
+            // BGMの再生
+            // var bgm = this.sound.add('bgm', { volume: 0, loop: true });
+            // bgm.play();
+
+            // 音量調節バーの位置とサイズ
+            var barX = 20;
+            var barY = game.config.height - 50;
+            var barWidth = 100;
+            var barHeight = 20;
+
+            // 音量調節バーの境界線を描画
+            var volumeBarBorder = this.add.graphics();
+            volumeBarBorder.lineStyle(2, 0x000000, 1); // 黒い線で、線の太さは2、不透明度は1
+            volumeBarBorder.strokeRect(barX, barY, barWidth, barHeight);
+
+            // 音量調節バーの描画
+            var volumeBar = this.add.graphics();
+            volumeBar.fillStyle(0xffffff, 1);
+            volumeBar.fillRect(barX, barY, barWidth, barHeight);
+
+            // 音量調節ハンドルの描画
+            var handleWidth = 20;
+            var handleHeight = barHeight;
+            var volumeHandle = this.add.graphics();
+            volumeHandle.fillStyle(0xff0000, 1);
+            volumeHandle.fillRect(barX, barY, handleWidth, handleHeight);
+            volumeHandle.setInteractive(new Phaser.Geom.Rectangle(barX, barY, handleWidth, handleHeight), Phaser.Geom.Rectangle.Contains);
+            this.input.setDraggable(volumeHandle);
+
+            // ドラッグイベントのハンドリング
+            this.input.on('drag', function (pointer, gameObject, dragX, dragY) {
+                if (gameObject === volumeHandle) {
+                    // ハンドルの位置をバーの範囲内で調整
+                    gameObject.x = Phaser.Math.Clamp(dragX, barX - 20, barX + barWidth - 40);
+                    // 音量を計算（最大値を0.1に制限）
+                    var volume = (gameObject.x) / barWidth * 0.5;
+                    bgm.setVolume(volume);
+                }
+            });
+            // this.input.on('drag', function (pointer, gameObject, dragX, dragY) {
+            //     if (gameObject === volumeHandle) {
+            //         // ハンドルの位置をバーの範囲内で調整
+            //         gameObject.x = Phaser.Math.Clamp(dragX, barX-20, barX + barWidth - 40);
+
+            //         // 新しい音量を計算
+            //         var newVolume = (gameObject.x - barX) / (barWidth - handleWidth)*0.1;
+
+            //         // BGMの音量を更新
+            //         bgm.setVolume(newVolume);
+            //     }
+            // });
+            // BGMバーのテキスト
+            var bgmTextX = barX + barWidth + 10; // BGMバーの右端から10ピクセル右に配置
+            var bgmTextY = barY; // BGMバーと同じ高さに配置
+            this.add.text(bgmTextX, bgmTextY, 'BGM', { fontSize: '16px', fill: '#000080' });
+        }
+
+        function createEffectsVolumeBar(scene) {
+            // 効果音の音量調節バーの位置とサイズ
+            var effectsBarX = 20;
+            var effectsBarY = game.config.height - 100; // 例: BGMバーからさらに下
+            var effectsBarWidth = 100;
+            var effectsBarHeight = 20;
+
+            // 効果音の音量調節バーの縁取りを描画
+            var borderThickness = 2; // 境界の太さ
+            var borderColor = 0x000000; // 黒色
+            var borderAlpha = 1; // 不透明
+            var graphics = scene.add.graphics();
+            graphics.lineStyle(borderThickness, borderColor, borderAlpha);
+            graphics.strokeRect(effectsBarX, effectsBarY, effectsBarWidth, effectsBarHeight);
+
+            // 効果音の音量調節バーの描画
+            var effectsVolumeBar = scene.add.graphics();
+            effectsVolumeBar.fillStyle(0xffffff, 1);
+            effectsVolumeBar.fillRect(effectsBarX, effectsBarY, effectsBarWidth, effectsBarHeight);
+
+            // 効果音の音量調節ハンドルの描画
+            var effectsHandleWidth = 20;
+            var effectsHandleHeight = effectsBarHeight;
+            var effectsVolumeHandle = scene.add.graphics();
+            effectsVolumeHandle.fillStyle(0xff0000, 1);
+            effectsVolumeHandle.fillRect(effectsBarX, effectsBarY, effectsHandleWidth, effectsHandleHeight);
+            effectsVolumeHandle.setInteractive(new Phaser.Geom.Rectangle(effectsBarX, effectsBarY, effectsHandleWidth, effectsHandleHeight), Phaser.Geom.Rectangle.Contains);
+            scene.input.setDraggable(effectsVolumeHandle);
+
+            // 効果音の音量調節バーのドラッグイベントのハンドリング
+            scene.input.on('drag', function (pointer, gameObject, dragX, dragY) {
+                if (gameObject === effectsVolumeHandle) {
+                    gameObject.x = Phaser.Math.Clamp(dragX, effectsBarX - 20, effectsBarX + effectsBarWidth - 40);
+                    effectsVolume = (gameObject.x) / effectsBarWidth * 1.0;
+                }
+            });
+            var effectsText = scene.add.text(effectsBarX + effectsBarWidth + 10, effectsBarY + 2, '効果音', { fontSize: '16px', fill: '#000080' });
+        }
+
+        function createBall(scene, x, y, type) {
+            var physicsOptions = {
+                restitution: 0.01,
+                density: 0.001,
+                frictionAir: 0.01,
+                friction: 0.1,
+                frictionStatic: 0.5,
+                shape: shapes['ball_' + type]
+            };
+
+            var ball = scene.matter.add.image(x, y, 'ball' + type, null, physicsOptions);
+            ball.type = type;
+            ball.setScale(getScaleForBallType(type));
+            scene.sound.play('dropSound', { volume: effectsVolume });
+            return ball;
+        }
+
+        function handleBallCollision(scene, ball1, ball2) {
+            if (ball1.type === ball2.type) {
+                if (ball1.type === 11 && ball2.type === 11) {
+                    return;
+                }
+                scene.sound.play('attachSound', { volume: effectsVolume });
+
+                var newType = ball1.type + 1;
+                var newX = (ball1.x + ball2.x) / 2;
+                var newY = (ball1.y + ball2.y) / 2;
+
+                var newBall = createBall(scene, newX, newY, newType);
+
+
+                var randomAngle = Phaser.Math.Between(0, 360);
+                newBall.setAngle(randomAngle);
+                newBall.type = newType;
+                newBall.setScale(getScaleForBallType(newType));
+                balls.push(newBall);
+
+                score += (newType * (newType - 1)) / 2;
+                scoreText.setText('スコア: ' + score);
+
+                var ball1Index = balls.indexOf(ball1);
+                if (ball1Index !== -1) balls.splice(ball1Index, 1);
+                var ball2Index = balls.indexOf(ball2);
+                if (ball2Index !== -1) balls.splice(ball2Index, 1);
+                ball1.destroy();
+                ball2.destroy();
+            }
+        }
+
+        function update() {
+            var ballsToDestroy = [];
+            balls.forEach(function (ball, index) {
+                if (!ball) return;
+
+                if (ball.x < 0 || ball.x > game.config.width || ball.y < 0 || ball.y > game.config.height) {
+                    ballsToDestroy.push(index);
+                }
+
+                if (ball.y < frameY && !ball.justDropped) {
+                    gameOver = true;
+                }
+            });
+
+            for (var i = ballsToDestroy.length - 1; i >= 0; i--) {
+                balls[ballsToDestroy[i]].destroy();
+                balls.splice(ballsToDestroy[i], 1);
+            }
+
+            if (gameOver) {
+                gameOverText.setVisible(true);
+                this.matter.world.pause();
+                this.retryButton.visible = true;
+                this.retryButton.setDepth(9998);
+
+                // ゲームオーバー時に現在のスコアをベストスコアと比較し、更新があれば保存
+                var savedBestScore = localStorage.getItem('bestScore');
+                if (!savedBestScore || score > parseInt(savedBestScore)) {
+                    localStorage.setItem('bestScore', score);
+                    bestScoreText.setText('ベストスコア: ' + score);
+                }
+            } else {
+                gameOverText.setVisible(false);
+                this.retryButton.visible = false;
+            }
+            var pointerX = this.input.activePointer.x;
+            var pointerY = this.input.activePointer.y;
+
+            if (pointerY < game.config.height) {
+
+                if (pointerX < frameXLeft + 30) {
+                    nextBall.x = frameXLeft + 30;
+                } else if (pointerX > frameXRight - 30) {
+                    nextBall.x = frameXRight - 30;
+                } else {
+                    nextBall.x = pointerX;
+                }
+                nextBall.y = dropLimitY - 50;
+            }
+            nextBall.angle += 1;
+        }
+
+
+    </script>
+</body>
+
+</html>
